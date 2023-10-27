@@ -1,0 +1,120 @@
+# linkerd config for linker-to-linker mode
+# routes from port 4140 on source node to 4141 on destination node
+
+admin:
+  ip: 0.0.0.0
+  port: 9990
+
+usage:
+  orgId: hsnylmz008
+  enabled: false
+
+telemetry:
+- kind: io.l5d.prometheus
+- kind: io.l5d.zipkin
+  host: zipkin
+  port: 9411
+  # port: 9410
+  sampleRate: 0.02
+
+routers:
+- label: ingress
+  protocol: http
+  # dtab: |
+  #   /svc => /#/io.l5d.consul_ingress/dc1;
+  service:
+    responseClassifier:
+      kind: io.l5d.http.retryableIdempotent5XX
+    retries:
+      budget:
+        percentCanRetry: 0.1
+  # service:
+  #   kind: io.l5d.static
+  #   configs:
+  #   - prefix: /svc
+  #     retries:
+  #       budget:
+  #         minRetriesPerSec: 5
+  #         percentCanRetry: 0.5
+  #         ttlSecs: 15
+  #       backoff:
+  #         kind: jittered
+  #         minMs: 10
+  #         maxMs: 10000
+  servers:
+  - port: 4140
+    ip: 0.0.0.0
+    maxConcurrentRequests: 10
+  identifier:
+    kind: io.l5d.header.token
+  interpreter:
+    kind: io.l5d.namerd.http
+    experimental: true
+    # dst: /$/inet/namerd/4180
+    dst: /$/inet/namerd/4180
+    namespace: consul_ingress
+    retry:
+      baseSeconds: 5
+      maxSeconds: 600
+    transformers:
+    - kind: io.l5d.port
+      port: 4141
+  client:
+   requeueBudget:
+    percentCanRetry: 5.0
+   loadBalancer:
+    kind: ewma
+    maxEffort: 10
+    decayTimeMs: 15000
+  originator: true
+
+- label: outgress
+  protocol: http
+  # dtab: |
+  #   /svc => /#/io.l5d.consul_egress/dc1;
+  # service:
+  #   responseClassifier:
+  #     kind: io.l5d.http.retryableIdempotent5XX
+  #   retries:
+  #     budget:
+  #       percentCanRetry: 0.1
+  # service:
+  #   kind: io.l5d.static
+  #   configs:
+  #   - prefix: /svc
+  #     retries:
+  #       budget:
+  #         minRetriesPerSec: 5
+  #         percentCanRetry: 0.5
+  #         ttlSecs: 15
+  #       backoff:
+  #         kind: jittered
+  #         minMs: 10
+  #         maxMs: 10000
+  servers:
+  - port: 4141
+    ip: 0.0.0.0
+    maxConcurrentRequests: 10
+  identifier:
+    kind: io.l5d.header.token
+  interpreter:
+    kind: io.l5d.namerd.http
+    experimental: true
+    dst: /$/inet/namerd/4180
+    namespace: consul_egress
+    retry:
+      baseSeconds: 5
+      maxSeconds: 600
+    transformers:
+    # filter instances to only include those on this host
+    # - kind: io.l5d.localhost # localhost does not work
+    - kind: io.l5d.specificHost
+      host: docker.for.mac.localhost
+  # client:
+  #  requeueBudget:
+  #   percentCanRetry: 5.0
+  #  loadBalancer:
+  #   kind: ewma
+  #   maxEffort: 10
+  #   decayTimeMs: 15000
+
