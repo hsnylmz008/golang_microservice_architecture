@@ -1,4 +1,4 @@
-# Go Microservice Architecture
+# GoLang Microservice Architecture
 
 Sample architecture with Go, showing how the different pieces are tied together.
 
@@ -224,5 +224,3 @@ $ repeat 10 curl http://localhost:32857/
     command: -internal=true -deregister=always -ip=docker.for.mac.localhost -cleanup -tags=registrator consul:8500
     network_mode: host
 ```
-# golang_microservice_architecture
-# golang_microservice_architecture
